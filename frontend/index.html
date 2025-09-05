@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>File Sharing</title>
+  <style>
+    body{font-family: system-ui, Arial;margin:2rem}
+    .card{max-width:700px;margin:0 auto;padding:1.25rem;border:1px solid #ddd;border-radius:12px}
+    button,input{padding:.6rem;border-radius:8px;border:1px solid #ccc}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>File Sharing</h1>
+    <p>Upload a file using API Gateway + Lambda (pre-signed URL). After upload the frontend will notify the backend to store metadata.</p>
+    <label>Select file</label><br/>
+    <input type="file" id="file"/><br/><br/>
+    <button id="upload">Upload</button>
+    <h3>Uploaded files</h3>
+    <button id="list">Refresh List</button>
+    <pre id="out">{}</pre>
+  </div>
+  <script>
+    const API_GATEWAY = "https://REPLACE_WITH_API_GATEWAY"; // -> /upload (Lambda)
+    const ECS_API = "https://REPLACE_WITH_ALB_DNS"; // -> /files and /notify
+    document.getElementById('upload').onclick = async () => {
+      const f = document.getElementById('file').files[0];
+      if(!f){ alert('pick file'); return; }
+      // get presigned url
+      const r = await fetch(API_GATEWAY + '/upload', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ filename: f.name, contentType: f.type }) });
+      const j = await r.json();
+      if(!j.url){ alert('no url'); return; }
+      // upload to S3
+      await fetch(j.url, { method: 'PUT', body: f, headers: { 'Content-Type': f.type } });
+      // notify backend to store metadata
+      await fetch(ECS_API + '/notify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ key: j.key, filename: f.name, size: f.size }) });
+      alert('uploaded and notified');
+    };
+    document.getElementById('list').onclick = async () => {
+      const r = await fetch(ECS_API + '/files');
+      const j = await r.json();
+      document.getElementById('out').textContent = JSON.stringify(j, null, 2);
+    };
+  </script>
+</body>
+</html>
