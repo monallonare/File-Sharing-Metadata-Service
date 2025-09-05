@@ -1,0 +1,49 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REPO_URI: "<your-ecr-repo-uri>"
+    FRONTEND_BUCKET: "<your-frontend-s3-bucket>"
+    LAMBDA_FUNCTION_NAME: "<your-lambda-function>"
+    ECS_CONTAINER_NAME: "<your-ecs-container-name>"
+    DB_HOST: "<your-db-host>"      # e.g., yourdb.xxxxx.rds.amazonaws.com
+    DB_NAME: "<your-db-name>"
+    DB_PORT: "3306"                # Use 5432 for PostgreSQL
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
+      - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
+
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build -t $ECR_REPO_URI:$IMAGE_TAG ./backend
+      - docker push $ECR_REPO_URI:$IMAGE_TAG
+      - echo Syncing frontend files to S3...
+      - aws s3 sync ./frontend s3://$FRONTEND_BUCKET --delete
+
+  post_build:
+    commands:
+      - echo Installing Lambda dependencies...
+      - cd lambda/generatePresigned
+      - npm install || pip install -r requirements.txt
+      - zip -r ../../generatePresigned.zip *
+      - cd ../../
+      - echo Updating Lambda function...
+      - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
+
+      - echo Creating imagedefinitions.json for ECS...
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
+
+      - echo Installing MySQL client...
+      - apt-get update && apt-get install -y mysql-client
+
+      - echo Running schema.sql on RDS...
+      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS $DB_NAME < ./sql/schema.sql
+
+artifacts:
+  files:
+    - pipeline/imagedefinitions.json
