@@ -46,34 +46,33 @@ phases:
       - echo "🌐 Syncing frontend files to S3..."
       - aws s3 sync ./frontend "s3://$FRONTEND_BUCKET" --delete
 
-  post_build:
-    commands:
-      - echo "🧩 Installing Lambda dependencies..."
-      - cd lambda/generatePresigned
-      - npm install || pip install -r requirements.txt
-      - zip -r ../../generatePresigned.zip *
-      - cd ../../
+post_build:
+  commands:
+    - echo "🧩 Installing Lambda dependencies..."
+    - cd lambda/generatePresigned
+    - npm install || pip install -r requirements.txt
+    - zip -r ../../generatePresigned.zip *
+    - cd ../../
 
-      - echo "🚀 Updating Lambda function..."
-      - aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --zip-file fileb://generatePresigned.zip
+    - echo "🚀 Updating Lambda function..."
+    - aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --zip-file fileb://generatePresigned.zip
 
-      - echo "📝 Creating imagedefinitions.json for ECS..."
-      - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
+    - echo "📝 Creating imagedefinitions.json for ECS..."
+    - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
 
-      - echo "🔧 Checking if schema.sql exists..."
-      - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
+    - echo "🔧 Checking if schema.sql exists..."
+    - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
 
-      - echo "🔍 Verifying DB environment variables..."
-      - echo "DB_HOST: $DB_HOST"
-      - echo "DB_PORT: $DB_PORT"
-      - echo "DB_USER: $DB_USER"
-      - echo "DB_NAME: $DB_NAME"
+    - echo "🔍 Verifying DB environment variables..."
+    - echo "DB_HOST: $DB_HOST"
+    - echo "DB_PORT: $DB_PORT"
+    - echo "DB_USER: $DB_USER"
+    - echo "DB_NAME: $DB_NAME"
 
-      - echo "🧪 Testing MySQL connectivity..."
-      - mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
+    - echo "🧪 Testing MySQL connectivity..."
+    - mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
 
-      - echo "📥 Running schema.sql on database..."
-      - mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
+    - "echo '📥 Running schema.sql on database...' && mysql -h \"$DB_HOST\" -P \"$DB_PORT\" -u \"$DB_USER\" -p\"$DB_PASS\" \"$DB_NAME\" < ./sql/schema.sql || { echo '❌ Failed to run schema.sql'; exit 1; }"
 
 artifacts:
   files:
