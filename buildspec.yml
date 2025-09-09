@@ -61,6 +61,13 @@ phases:
       - echo "Checking if schema.sql file is present..."
       - ls -l ./sql/schema.sql || echo "Warning: schema.sql not found, skipping DB schema load."
 
+      - |
+        if [ -f ./sql/schema.sql ]; then
+          mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || echo "Warning: Failed to run schema.sql";
+        else
+          echo "No schema.sql found, skipping.";
+        fi
+
 artifacts:
   files:
     - pipeline/imagedefinitions.json
