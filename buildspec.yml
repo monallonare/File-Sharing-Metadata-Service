@@ -19,7 +19,7 @@ phases:
      - echo Cleaning yum metadata and updating...
      - yum clean all
      - yum update -y
-     - yum install -y jq mariadb-client
+     - yum install -y jq mysql
   pre_build:
     commands:
       - echo Retrieving DB credentials from Secrets Manager...
