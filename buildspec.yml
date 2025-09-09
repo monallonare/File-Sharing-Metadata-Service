@@ -16,20 +16,19 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-      - echo Cleaning yum metadata and updating...
-      - yum clean all
-      - yum update -y
+       - echo Cleaning yum metadata and updating...
+       - yum clean all
+       - yum update -y
 
-      - echo Installing jq and MySQL client (with --nogpgcheck)...
-      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
+       - echo "Installing jq and MySQL client (with --nogpgcheck)..."
+       - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+       - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
 
-      - yum clean all
-      - yum makecache --refresh
+       - yum clean all
+       - yum makecache --refresh
 
-      # ✅ Use --nogpgcheck to avoid GPG verification failure
-      - yum install -y --nogpgcheck mysql-community-client jq
-      
+       - yum install -y --nogpgcheck mysql-community-client jq
+
   pre_build:
     commands:
       - echo Retrieving DB credentials from Secrets Manager...
