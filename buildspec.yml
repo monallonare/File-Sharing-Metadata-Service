@@ -75,9 +75,7 @@ phases:
       - echo "🧪 Testing MySQL connectivity..."
       - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
 
-      - |
-        echo "📥 Running schema.sql on database..."
-        mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
+      - echo "📥 Running schema.sql on database..." && mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
 
 artifacts:
   files:
