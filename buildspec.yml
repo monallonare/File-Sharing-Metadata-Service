@@ -6,9 +6,9 @@ env:
     FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
     LAMBDA_FUNCTION_NAME: "uploadmetadat"
     ECS_CONTAINER_NAME: "fileshare"
-    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
+    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"      # e.g., yourdb.xxxxx.rds.amazonaws.com
     DB_NAME: "metadatadb"
-    DB_PORT: "3306"
+    DB_PORT: "3306"                # Use 5432 for PostgreSQL
     SECRET_NAME: "metadata/"
 
 phases:
@@ -16,59 +16,68 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-      - echo "📦 Cleaning yum metadata and updating..."
-      - yum clean all
-      - yum update -y
-      - echo "🔧 Installing jq and MySQL client..."
-      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
-      - yum clean all
-      - yum makecache --refresh
-      - yum install -y --nogpgcheck mysql-community-client jq
+       - echo Cleaning yum metadata and updating...
+       - yum clean all
+       - yum update -y
+
+       - echo "Installing jq and MySQL client (with --nogpgcheck)..."
+       - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+       - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
+
+       - yum clean all
+       - yum makecache --refresh
+
+       - yum install -y --nogpgcheck mysql-community-client jq
 
   pre_build:
     commands:
-      - echo "🔐 Retrieving DB credentials from Secrets Manager..."
-      - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text)
-      - 'if [ -z "$SECRET_JSON" ]; then echo "❌ Failed to retrieve secret $SECRET_NAME"; exit 1; fi'
-      - export DB_USER=$(echo "$SECRET_JSON" | jq -r '.username')
-      - export DB_PASS=$(echo "$SECRET_JSON" | jq -r '.password')
-      - echo "🔐 Logging in to Amazon ECR..."
+      - echo Retrieving DB credentials from Secrets Manager...
+      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
+      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
+      - echo Logging in to Amazon ECR...
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
 
 
   build:
     commands:
-      - echo "🏗️ Building Docker image..."
+      - echo Building Docker image...
       - docker build -t $ECR_REPO_URI:$IMAGE_TAG ./backend
-      - echo "📤 Pushing Docker image to ECR..."
       - docker push $ECR_REPO_URI:$IMAGE_TAG
-      - echo "🌐 Syncing frontend files to S3..."
+      - echo Syncing frontend files to S3...
       - aws s3 sync ./frontend s3://$FRONTEND_BUCKET --delete
 
   post_build:
     commands:
-      - echo "📦 Installing Lambda dependencies..."
+      - echo Installing Lambda dependencies...
       - cd lambda/generatePresigned
       - npm install || pip install -r requirements.txt
       - zip -r ../../generatePresigned.zip *
       - cd ../../
-      - echo "📤 Updating Lambda function..."
-      - aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --zip-file fileb://generatePresigned.zip
-      - echo "🧾 Creating imagedefinitions.json for ECS..."
+      - echo Updating Lambda function...
+      - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
+
+      - echo Creating imagedefinitions.json for ECS...
       - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
+
+      - echo Installing MySQL client...
+      - yum update -y
+      - yum install -y mysql-community-client
+
       - echo "🔧 Checking if schema.sql exists..."
-      - ls -l ./sql/schema.sql || { echo '❌ schema.sql not found'; exit 1; }
+      - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
+
       - echo "🔍 Verifying DB environment variables..."
-      - echo "DB_HOST: ${DB_HOST}"
-      - echo "DB_PORT: ${DB_PORT}"
-      - echo "DB_USER: ${DB_USER}"
-      - echo "DB_NAME: ${DB_NAME}"
+      - echo "DB_HOST: $DB_HOST"
+      - echo "DB_PORT: $DB_PORT"
+      - echo "DB_USER: $DB_USER"
+      - echo "DB_NAME: $DB_NAME"
+
       - echo "🧪 Testing MySQL connectivity..."
-      - mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASS}" -e "SHOW DATABASES;" || { echo '❌ Cannot connect to MySQL'; exit 1; }
+      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
+
       - echo "📥 Running schema.sql on database..."
-      - mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
+      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
 
 artifacts:
   files:
