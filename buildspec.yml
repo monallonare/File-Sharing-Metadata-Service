@@ -6,7 +6,7 @@ env:
     FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
     LAMBDA_FUNCTION_NAME: "uploadmetadat"
     ECS_CONTAINER_NAME: "fileshare"
-    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
+    DB_HOST: "metadatadb.claw0qi2e.ap-south-1.rds.amazonaws.com"
     DB_NAME: "metadatadb"
     DB_PORT: "3306"
     SECRET_NAME: "metadata/"
@@ -61,14 +61,15 @@ phases:
       - echo "Checking if schema.sql file is present..."
       - ls -l ./sql/schema.sql || echo "Warning: schema.sql not found, skipping DB schema load."
       
-      #- echo "Testing MySQL connectivity..."
-      #- mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || echo "Warning: Cannot connect to MySQL, skipping schema load."
+      # Uncomment below if you want to test MySQL connectivity and run schema.sql
+      # - echo "Testing MySQL connectivity..."
+      # - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || echo "Warning: Cannot connect to MySQL, skipping schema load."
       
-      #- if [ -f ./sql/schema.sql ]; then
-       #   mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || echo "Warning: Failed to run schema.sql";
-        #else
-        #  echo "No schema.sql found, skipping.";
-        #fi
+      # - if [ -f ./sql/schema.sql ]; then
+      #     mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || echo "Warning: Failed to run schema.sql";
+      #   else
+      #     echo "No schema.sql found, skipping.";
+      #   fi
 
 artifacts:
   files:
