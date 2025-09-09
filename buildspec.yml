@@ -13,19 +13,18 @@ env:
 
 phases:
   install:
-    runtime-versions:
-      nodejs: 14
-    commands:
-      - echo "🧼 Cleaning and updating system packages..."
-      - yum clean all
-      - yum update -y
+   runtime-versions:
+    nodejs: 14
+   commands:
+    - echo "🧼 Cleaning and updating system packages..."
+    - yum clean all
+    - yum update -y
 
-      - echo "📦 Installing jq and MySQL client..."
-      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
-      - yum clean all
-      - yum makecache --refresh
-      - yum install -y --nogpgcheck mysql-community-client jq
+    - echo "📦 Installing jq and MySQL client..."
+    - amazon-linux-extras enable mysql8.0
+    - yum clean metadata
+    - yum install -y mysql jq
+
 
   pre_build:
     commands:
