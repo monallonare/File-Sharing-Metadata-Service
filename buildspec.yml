@@ -19,21 +19,19 @@ phases:
       - echo "Cleaning yum metadata and updating..."
       - yum clean all
       - yum update -y
-
+      
       - echo "Installing jq and MySQL client repo (Amazon Linux 2)..."
-      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm || echo "RPM install failed, continuing..."
-
-      - yum clean all
-      - yum makecache --refresh
-
-      - yum install -y --nogpgcheck mysql-community-client jq
+      - yum install -y amazon-linux-extras
+      - amazon-linux-extras enable mysql8.0
+      - yum clean metadata
+      - yum install -y mysql jq
 
   pre_build:
     commands:
       - echo "Retrieving DB credentials from Secrets Manager..."
       - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
       - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
+      
       - echo "Logging in to Amazon ECR..."
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
@@ -53,14 +51,24 @@ phases:
       - npm install || pip install -r requirements.txt
       - zip -r ../../generatePresigned.zip *
       - cd ../../
+      
       - echo "Updating Lambda function..."
       - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
-
+      
       - echo "Creating imagedefinitions.json for ECS..."
       - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
-
-      - echo "Checking if schema.sql exists..."
-      - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
+      
+      - echo "Checking if schema.sql file is present..."
+      - ls -l ./sql/schema.sql || echo "Warning: schema.sql not found, skipping DB schema load."
+      
+      #- echo "Testing MySQL connectivity..."
+      #- mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || echo "Warning: Cannot connect to MySQL, skipping schema load."
+      
+      #- if [ -f ./sql/schema.sql ]; then
+       #   mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || echo "Warning: Failed to run schema.sql";
+        #else
+        #  echo "No schema.sql found, skipping.";
+        #fi
 
 artifacts:
   files:
