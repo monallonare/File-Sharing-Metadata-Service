@@ -16,9 +16,9 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-      - echo Installing dependencies...
-      - yum update -y
-      - yum install -y mysql jq
+    - echo Installing dependencies...
+    - yum update -y
+    - yum install -y mariadb jq
 
   pre_build:
     commands:
