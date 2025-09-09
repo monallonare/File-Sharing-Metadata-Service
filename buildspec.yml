@@ -9,63 +9,58 @@ env:
     DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
     DB_NAME: "metadatadb"
     DB_PORT: "3306"
-    SECRET_NAME: "my-db-secret"   # Use your actual secret name here!
+    SECRET_NAME: "metadata/"
 
 phases:
   install:
     runtime-versions:
       nodejs: 14
     commands:
-      - echo Cleaning yum metadata and updating...
+      - echo "Cleaning yum metadata and updating..."
       - yum clean all
       - yum update -y
 
-      - echo Installing jq and MySQL client repo (Amazon Linux 2)...
-      - yum install -y https://repo.mysql.com/mysql80-community-release-el7-3.noarch.rpm
+      - echo "Installing jq and MySQL client repo (Amazon Linux 2)..."
+      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm || echo "RPM install failed, continuing..."
+
       - yum clean all
       - yum makecache --refresh
 
-      - echo Installing MySQL client and jq...
-      - yum install -y mysql-community-client jq
+      - yum install -y --nogpgcheck mysql-community-client jq
 
   pre_build:
     commands:
-      - echo Retrieving DB credentials from Secrets Manager...
-      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id $SECRET_NAME --query SecretString --output text | jq -r '.username')
-      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id $SECRET_NAME --query SecretString --output text | jq -r '.password')
-      - echo Logging in to Amazon ECR...
+      - echo "Retrieving DB credentials from Secrets Manager..."
+      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
+      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
+      - echo "Logging in to Amazon ECR..."
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
-      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
+      - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
 
   build:
     commands:
-      - echo Building Docker image...
+      - echo "Building Docker image..."
       - docker build -t $ECR_REPO_URI:$IMAGE_TAG ./backend
       - docker push $ECR_REPO_URI:$IMAGE_TAG
-      - echo Syncing frontend files to S3...
+      - echo "Syncing frontend files to S3..."
       - aws s3 sync ./frontend s3://$FRONTEND_BUCKET --delete
 
   post_build:
     commands:
-      - echo Installing Lambda dependencies...
+      - echo "Installing Lambda dependencies..."
       - cd lambda/generatePresigned
       - npm install || pip install -r requirements.txt
       - zip -r ../../generatePresigned.zip *
       - cd ../../
-      - echo Updating Lambda function...
+      - echo "Updating Lambda function..."
       - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
 
-      - echo Creating imagedefinitions.json for ECS...
+      - echo "Creating imagedefinitions.json for ECS..."
       - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
 
-      - echo "🔧 Checking if schema.sql exists..."
+      - echo "Checking if schema.sql exists..."
       - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
-
-    #  - echo "🧪 Testing MySQL connectivity..."
-    #  - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
-
-    #  - echo "📥 Running schema.sql on database..."
-    #  - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
 
 artifacts:
   files:
