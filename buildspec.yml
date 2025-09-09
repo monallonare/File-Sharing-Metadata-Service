@@ -2,20 +2,33 @@ version: 0.2
 
 env:
   variables:
-    ECR_REPO_URI: "<your-ecr-repo-uri>"
-    FRONTEND_BUCKET: "<your-frontend-s3-bucket>"
-    LAMBDA_FUNCTION_NAME: "<your-lambda-function>"
-    ECS_CONTAINER_NAME: "<your-ecs-container-name>"
-    DB_HOST: "<your-db-host>"      # e.g., yourdb.xxxxx.rds.amazonaws.com
-    DB_NAME: "<your-db-name>"
+    ECR_REPO_URI: "306266123975.dkr.ecr.ap-south-1.amazonaws.com/metadata/backend"
+    FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
+    LAMBDA_FUNCTION_NAME: "uploadmetadat"
+    ECS_CONTAINER_NAME: "fileshare"
+    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"      # e.g., yourdb.xxxxx.rds.amazonaws.com
+    DB_NAME: "metadatadb"
     DB_PORT: "3306"                # Use 5432 for PostgreSQL
+    SECRET_NAME: "metadata/"
 
 phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+    commands:
+      - echo Installing dependencies...
+      - yum update -y
+      - yum install -y mysql jq
+
   pre_build:
     commands:
+      - echo Retrieving DB credentials from Secrets Manager...
+      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
+      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
       - echo Logging in to Amazon ECR...
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
+
 
   build:
     commands:
