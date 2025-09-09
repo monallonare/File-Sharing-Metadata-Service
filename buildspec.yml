@@ -24,17 +24,13 @@ phases:
      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
 
-      # ✅ Remove any potentially incorrect GPG keys
-     - rm -f /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-*
+      # ✅ Manually download the expected GPG key to the right path
+     - curl -sSLo /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2022 https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+     - chmod 644 /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2022
+     - rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2022
 
-      # ✅ Re-import the official GPG key
-     - rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
-
-      # ✅ Make sure the repo metadata is up-to-date
      - yum clean all
      - yum makecache --refresh
-
-      # ✅ Install the packages
      - yum install -y mysql-community-client jq
      
   pre_build:
