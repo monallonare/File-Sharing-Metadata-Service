@@ -16,10 +16,13 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-    - echo Installing dependencies...
+    - echo Updating packages and enabling EPEL repo...
+    - yum clean all
     - yum update -y
-    - yum install -y mariadb jq
-
+    - yum install -y amazon-linux-extras
+    - amazon-linux-extras enable epel
+    - yum clean metadata
+    - yum install -y jq mariadb
   pre_build:
     commands:
       - echo Retrieving DB credentials from Secrets Manager...
