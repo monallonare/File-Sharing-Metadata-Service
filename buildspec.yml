@@ -16,20 +16,27 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-    - echo Cleaning yum metadata and updating...
-    - yum clean all
-    - yum update -y
+     - echo Cleaning yum metadata and updating...
+     - yum clean all
+     - yum update -y
 
-    - echo Installing jq and MySQL client...
-    - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-    - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
+     - echo Installing jq and MySQL client...
+     - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+     - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
 
-      # 💡 Import MySQL GPG key to fix the GPG check FAILED issue
-    - rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+      # ✅ Remove any potentially incorrect GPG keys
+     - rm -f /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-*
 
-      # ✅ Now install MySQL client and jq
-    - yum install -y mysql-community-client jq
+      # ✅ Re-import the official GPG key
+     - rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
 
+      # ✅ Make sure the repo metadata is up-to-date
+     - yum clean all
+     - yum makecache --refresh
+
+      # ✅ Install the packages
+     - yum install -y mysql-community-client jq
+     
   pre_build:
     commands:
       - echo Retrieving DB credentials from Secrets Manager...
