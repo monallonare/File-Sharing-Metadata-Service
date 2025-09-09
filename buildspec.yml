@@ -41,7 +41,6 @@ phases:
 
   post_build:
     commands:
-      - echo "🧩 Installing Lambda dependencies..."
       - cd lambda/generatePresigned
       - npm install || pip install -r requirements.txt
       - zip -r ../../generatePresigned.zip *
