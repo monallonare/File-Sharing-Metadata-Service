@@ -30,15 +30,11 @@ phases:
     commands:
       - echo "🔐 Retrieving DB credentials from Secrets Manager..."
       - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text)
-      - |
-        if [[ -z "$SECRET_JSON" ]]; then
-          echo "❌ Failed to retrieve secret $SECRET_NAME"
-          exit 1
-        fi
+      - if [[ -z "$SECRET_JSON" ]]; then echo "❌ Failed to retrieve secret $SECRET_NAME"; exit 1; fi
       - export DB_USER=$(echo "$SECRET_JSON" | jq -r '.username')
       - export DB_PASS=$(echo "$SECRET_JSON" | jq -r '.password')
       - echo "🔐 Logging in to Amazon ECR..."
-      - export IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
 
   build:
