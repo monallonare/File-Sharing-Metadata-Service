@@ -16,52 +16,49 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-      - echo Cleaning yum metadata and updating...
+      - echo "🧼 Cleaning and updating system packages..."
       - yum clean all
       - yum update -y
 
-      - echo "Installing jq and MySQL client (with --nogpgcheck)..."
+      - echo "📦 Installing jq and MySQL client..."
       - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
       - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
-
       - yum clean all
       - yum makecache --refresh
-
       - yum install -y --nogpgcheck mysql-community-client jq
 
   pre_build:
     commands:
-      - echo Retrieving DB credentials from Secrets Manager...
+      - echo "🔐 Retrieving DB credentials from Secrets Manager..."
       - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
       - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
-      - echo Logging in to Amazon ECR...
+
+      - echo "🔑 Logging into Amazon ECR..."
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
 
   build:
     commands:
-      - echo Building Docker image...
+      - echo "🐳 Building Docker image..."
       - docker build -t $ECR_REPO_URI:$IMAGE_TAG ./backend
       - docker push $ECR_REPO_URI:$IMAGE_TAG
-      - echo Syncing frontend files to S3...
+
+      - echo "🌐 Syncing frontend files to S3..."
       - aws s3 sync ./frontend s3://$FRONTEND_BUCKET --delete
 
   post_build:
     commands:
-      - echo Installing Lambda dependencies...
+      - echo "🧩 Installing Lambda dependencies..."
       - cd lambda/generatePresigned
       - npm install || pip install -r requirements.txt
       - zip -r ../../generatePresigned.zip *
       - cd ../../
-      - echo Updating Lambda function...
+
+      - echo "🚀 Updating Lambda function..."
       - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
 
-      - echo Creating imagedefinitions.json for ECS...
+      - echo "📝 Creating imagedefinitions.json for ECS..."
       - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
-
-      - echo Installing MySQL client...
-      - yum update -y
-      - yum install -y mysql-community-client
 
       - echo "🔧 Checking if schema.sql exists..."
       - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
