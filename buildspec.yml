@@ -6,9 +6,9 @@ env:
     FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
     LAMBDA_FUNCTION_NAME: "uploadmetadat"
     ECS_CONTAINER_NAME: "fileshare"
-    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
+    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"      # e.g., yourdb.xxxxx.rds.amazonaws.com
     DB_NAME: "metadatadb"
-    DB_PORT: "3306"
+    DB_PORT: "3306"                # Use 5432 for PostgreSQL
     SECRET_NAME: "metadata/"
 
 phases:
@@ -16,60 +16,68 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-      - echo "Cleaning yum metadata and updating..."
-      - yum clean all
-      - yum update -y
-      
-      - echo "Installing jq and MySQL client repo (Amazon Linux 2)..."
-      - yum install -y amazon-linux-extras
-      - amazon-linux-extras enable mysql8.0
-      - yum clean metadata
-      - yum install -y mysql jq
+       - echo Cleaning yum metadata and updating...
+       - yum clean all
+       - yum update -y
+
+       - echo "Installing jq and MySQL client (with --nogpgcheck)..."
+       - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+       - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
+
+       - yum clean all
+       - yum makecache --refresh
+
+       - yum install -y --nogpgcheck mysql-community-client jq
 
   pre_build:
     commands:
-      - echo "Retrieving DB credentials from Secrets Manager..."
+      - echo Retrieving DB credentials from Secrets Manager...
       - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
       - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
-      - |
-        IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
-        IMAGE_PREFIX=${ECR_REPO_URI%%/*}
-        aws ecr get-login-password | docker login --username AWS --password-stdin $IMAGE_PREFIX
+      - echo Logging in to Amazon ECR...
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
+      - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
+
 
   build:
     commands:
-      - echo "Building Docker image..."
+      - echo Building Docker image...
       - docker build -t $ECR_REPO_URI:$IMAGE_TAG ./backend
       - docker push $ECR_REPO_URI:$IMAGE_TAG
-      - echo "Syncing frontend files to S3..."
+      - echo Syncing frontend files to S3...
       - aws s3 sync ./frontend s3://$FRONTEND_BUCKET --delete
 
   post_build:
     commands:
-      - echo "Installing Lambda dependencies..."
+      - echo Installing Lambda dependencies...
       - cd lambda/generatePresigned
       - npm install || pip install -r requirements.txt
       - zip -r ../../generatePresigned.zip *
       - cd ../../
-      
-      - echo "Updating Lambda function..."
+      - echo Updating Lambda function...
       - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
-      
-      - echo "Creating imagedefinitions.json for ECS..."
+
+      - echo Creating imagedefinitions.json for ECS...
       - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
-      
-      - echo "Checking if schema.sql file is present..."
-      - ls -l ./sql/schema.sql || echo "Warning: schema.sql not found, skipping DB schema load."
-      
-      # Uncomment below if you want to test MySQL connectivity and run schema.sql
-      # - echo "Testing MySQL connectivity..."
-      # - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || echo "Warning: Cannot connect to MySQL, skipping schema load."
-      
-      # - if [ -f ./sql/schema.sql ]; then
-      #     mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || echo "Warning: Failed to run schema.sql";
-      #   else
-      #     echo "No schema.sql found, skipping.";
-      #   fi
+
+      - echo Installing MySQL client...
+      - yum update -y
+      - yum install -y mysql-community-client
+
+      - echo "🔧 Checking if schema.sql exists..."
+      - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
+
+      - echo "🔍 Verifying DB environment variables..."
+      - echo "DB_HOST: $DB_HOST"
+      - echo "DB_PORT: $DB_PORT"
+      - echo "DB_USER: $DB_USER"
+      - echo "DB_NAME: $DB_NAME"
+
+      - echo "🧪 Testing MySQL connectivity..."
+      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
+
+      - echo "📥 Running schema.sql on database..."
+      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
 
 artifacts:
   files:
