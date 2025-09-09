@@ -48,23 +48,24 @@ phases:
       - aws s3 sync ./frontend s3://$FRONTEND_BUCKET --delete
 
   post_build:
-    commands:
-      - echo Installing Lambda dependencies...
-      - cd lambda/generatePresigned
-      - npm install || pip install -r requirements.txt
-      - zip -r ../../generatePresigned.zip *
-      - cd ../../
-      - echo Updating Lambda function...
-      - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
+  commands:
+    - echo Installing Lambda dependencies...
+    - cd lambda/generatePresigned
+    - npm install || pip install -r requirements.txt
+    - zip -r ../../generatePresigned.zip *
+    - cd ../../
+    - echo Updating Lambda function...
+    - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://generatePresigned.zip
 
-      - echo Creating imagedefinitions.json for ECS...
-      - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
+    - echo Creating imagedefinitions.json for ECS...
+    - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
 
-      - echo Installing MySQL client...
-      - apt-get update && apt-get install -y mysql-client
+    - echo Installing MySQL client...
+    - yum update -y
+    - yum install -y mysql-community-client
 
-      - echo Running schema.sql on RDS...
-      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS $DB_NAME < ./sql/schema.sql
+    - echo Running schema.sql on RDS...
+    - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS $DB_NAME < ./sql/schema.sql
 
 artifacts:
   files:
