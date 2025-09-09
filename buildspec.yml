@@ -6,9 +6,9 @@ env:
     FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
     LAMBDA_FUNCTION_NAME: "uploadmetadat"
     ECS_CONTAINER_NAME: "fileshare"
-    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"      # e.g., yourdb.xxxxx.rds.amazonaws.com
+    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
     DB_NAME: "metadatadb"
-    DB_PORT: "3306"                # Use 5432 for PostgreSQL
+    DB_PORT: "3306"
     SECRET_NAME: "metadata/"
 
 phases:
@@ -16,18 +16,18 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-       - echo Cleaning yum metadata and updating...
-       - yum clean all
-       - yum update -y
+      - echo Cleaning yum metadata and updating...
+      - yum clean all
+      - yum update -y
 
-       - echo "Installing jq and MySQL client (with --nogpgcheck)..."
-       - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-       - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
+      - echo "Installing jq and MySQL client (with --nogpgcheck)..."
+      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
 
-       - yum clean all
-       - yum makecache --refresh
+      - yum clean all
+      - yum makecache --refresh
 
-       - yum install -y --nogpgcheck mysql-community-client jq
+      - yum install -y --nogpgcheck mysql-community-client jq
 
   pre_build:
     commands:
@@ -37,7 +37,6 @@ phases:
       - echo Logging in to Amazon ECR...
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
       - aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_REPO_URI%%/*}
-
 
   build:
     commands:
@@ -76,8 +75,9 @@ phases:
       - echo "🧪 Testing MySQL connectivity..."
       - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
 
-      - echo "📥 Running schema.sql on database..."
-      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
+      - |
+        echo "📥 Running schema.sql on database..."
+        mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
 
 artifacts:
   files:
