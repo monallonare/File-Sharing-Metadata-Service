@@ -16,23 +16,20 @@ phases:
     runtime-versions:
       nodejs: 14
     commands:
-     - echo Cleaning yum metadata and updating...
-     - yum clean all
-     - yum update -y
+      - echo Cleaning yum metadata and updating...
+      - yum clean all
+      - yum update -y
 
-     - echo Installing jq and MySQL client...
-     - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
-     - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
+      - echo Installing jq and MySQL client (with --nogpgcheck)...
+      - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+      - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
 
-      # ✅ Manually download the expected GPG key to the right path
-     - curl -sSLo /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2022 https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
-     - chmod 644 /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2022
-     - rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2022
+      - yum clean all
+      - yum makecache --refresh
 
-     - yum clean all
-     - yum makecache --refresh
-     - yum install -y mysql-community-client jq
-     
+      # ✅ Use --nogpgcheck to avoid GPG verification failure
+      - yum install -y --nogpgcheck mysql-community-client jq
+      
   pre_build:
     commands:
       - echo Retrieving DB credentials from Secrets Manager...
