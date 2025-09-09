@@ -64,9 +64,20 @@ phases:
       - yum update -y
       - yum install -y mysql-community-client
 
-      - echo Running schema.sql on RDS...
-      - ls -l ./sql/schema.sql
-      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS $DB_NAME < ./sql/schema.sql
+      - echo "🔧 Checking if schema.sql exists..."
+      - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
+
+      - echo "🔍 Verifying DB environment variables..."
+      - echo "DB_HOST: $DB_HOST"
+      - echo "DB_PORT: $DB_PORT"
+      - echo "DB_USER: $DB_USER"
+      - echo "DB_NAME: $DB_NAME"
+
+      - echo "🧪 Testing MySQL connectivity..."
+      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" -e "SHOW DATABASES;" || { echo "❌ Cannot connect to MySQL"; exit 1; }
+
+      - echo "📥 Running schema.sql on database..."
+      - mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p"$DB_PASS" $DB_NAME < ./sql/schema.sql || { echo "❌ Failed to run schema.sql"; exit 1; }
 
 artifacts:
   files:
