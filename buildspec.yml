@@ -19,7 +19,12 @@ phases:
      - echo Cleaning yum metadata and updating...
      - yum clean all
      - yum update -y
-     - yum install -y jq mysql
+
+     - echo Installing jq and MySQL client...
+     - curl -sSLO https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+     - rpm -ivh mysql80-community-release-el9-1.noarch.rpm
+     - yum install -y mysql-community-client jq
+     
   pre_build:
     commands:
       - echo Retrieving DB credentials from Secrets Manager...
