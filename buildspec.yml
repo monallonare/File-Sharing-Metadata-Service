@@ -9,12 +9,13 @@ env:
     DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
     DB_NAME: "metadatadb"
     DB_PORT: "3306"
-    SECRET_NAME: "my-db-secret"
+    SECRET_NAME: "metadata/"
 
 phases:
   install:
     runtime-versions:
       nodejs: 18
+      docker: 20
     commands:
       - echo "🧼 Cleaning and updating system packages..."
       - yum clean all
@@ -25,15 +26,15 @@ phases:
   pre_build:
     commands:
       - echo "🔐 Retrieving DB credentials from Secrets Manager..."
-      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text | jq -r '.username')
-      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text | jq -r '.password')
+      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
+      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
       - echo "🔑 Logging into Amazon ECR..."
       - export IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION}"
       - aws ecr get-login-password | docker login --username AWS --password-stdin "${ECR_REPO_URI%%/*}"
 
   build:
     commands:
-      - echo "🐳 Building Docker image for ECS..."
+      - echo "🐳 Building Docker image..."
       - docker build -t "$ECR_REPO_URI:$IMAGE_TAG" ./backend
       - docker push "$ECR_REPO_URI:$IMAGE_TAG"
       - echo "🌐 Syncing frontend files to S3..."
@@ -41,8 +42,9 @@ phases:
 
   post_build:
     commands:
+      - echo "📦 Preparing Lambda deployment..."
       - cd lambda/generatePresigned
-      - npm install || pip install -r requirements.txt
+      - if [ -f package.json ]; then npm install; fi
       - zip -r ../../generatePresigned.zip *
       - cd ../../
       - echo "🚀 Updating Lambda function..."
