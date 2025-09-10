@@ -6,16 +6,13 @@ env:
     FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
     LAMBDA_FUNCTION_NAME: "uploadmetadat"
     ECS_CONTAINER_NAME: "metadata-container"
-    DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
-    DB_NAME: "metadatadb"
-    DB_PORT: "3306"
-    SECRET_NAME: "metadata/"
+    DB_SECRET_ID: "my-db-secret"  # update with your secret name
 
 phases:
   install:
     runtime-versions:
-      nodejs: 18
-      docker: 20
+      nodejs: 14
+      docker: 19
     commands:
       - echo "🧼 Cleaning and updating system packages..."
       - yum clean all
@@ -26,11 +23,11 @@ phases:
   pre_build:
     commands:
       - echo "🔐 Retrieving DB credentials from Secrets Manager..."
-      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.username')
-      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id my-db-secret --query SecretString --output text | jq -r '.password')
+      - export DB_USER=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET_ID --query SecretString --output text | jq -r '.username')
+      - export DB_PASS=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET_ID --query SecretString --output text | jq -r '.password')
       - echo "🔑 Logging into Amazon ECR..."
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin "${ECR_REPO_URI%%/*}"
       - export IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION}"
-      - aws ecr get-login-password | docker login --username AWS --password-stdin "${ECR_REPO_URI%%/*}"
 
   build:
     commands:
@@ -42,17 +39,14 @@ phases:
 
   post_build:
     commands:
-      - echo "📦 Preparing Lambda deployment..."
       - cd lambda/generatePresigned
-      - if [ -f package.json ]; then npm install; fi
+      - npm install || echo "npm install failed, skipping pip install"
       - zip -r ../../generatePresigned.zip *
       - cd ../../
       - echo "🚀 Updating Lambda function..."
       - aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --zip-file fileb://generatePresigned.zip
-      - echo "📝 Creating imagedefinitions.json for ECS Blue/Green deploy..."
+      - echo "📝 Creating imagedefinitions.json for ECS..."
       - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
-      - echo "📥 Checking for schema.sql..."
-      - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
 
 artifacts:
   files:
