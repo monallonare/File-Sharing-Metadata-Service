@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    ECR_REPO_URI: "306266123975.dkr.ecr.ap-south-1.amazonaws.com/metadata/backend"
+    ECR_REPO_URI: "306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata"
     FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
     LAMBDA_FUNCTION_NAME: "uploadmetadat"
     ECS_CONTAINER_NAME: "fileshare"
