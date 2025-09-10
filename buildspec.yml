@@ -19,7 +19,7 @@ phases:
       - echo "🧼 Cleaning and updating system packages..."
       - yum clean all
       - yum update -y
-      - echo "📦 Installing jq and MySQL client..."
+      - echo "📦 Installing required packages..."
       - yum install -y mysql jq
 
   pre_build:
@@ -30,18 +30,20 @@ phases:
       - echo "🔑 Logging into Amazon ECR..."
       - export IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION}"
       - aws ecr get-login-password | docker login --username AWS --password-stdin "${ECR_REPO_URI%%/*}"
+      - echo "🔧 Setting up Docker Buildx..."
+      - docker buildx create --use
 
   build:
     commands:
-      - echo "🐳 Building Docker image..."
-      - docker build -t "$ECR_REPO_URI:$IMAGE_TAG" ./backend
-      - docker push "$ECR_REPO_URI:$IMAGE_TAG"
+      - echo "🐳 Building Docker image for linux/amd64..."
+      - docker buildx build --platform linux/amd64 -t "$ECR_REPO_URI:$IMAGE_TAG" --push ./backend
       - echo "🌐 Syncing frontend files to S3..."
       - aws s3 sync ./frontend "s3://$FRONTEND_BUCKET" --delete
 
   post_build:
     commands:
       - cd lambda/generatePresigned
+      - echo "📦 Installing Lambda dependencies..."
       - npm install || pip install -r requirements.txt
       - zip -r ../../generatePresigned.zip *
       - cd ../../
@@ -49,10 +51,8 @@ phases:
       - aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --zip-file fileb://generatePresigned.zip
       - echo "📝 Creating imagedefinitions.json for ECS..."
       - printf '[{"name":"%s","imageUri":"%s"}]' "$ECS_CONTAINER_NAME" "$ECR_REPO_URI:$IMAGE_TAG" > pipeline/imagedefinitions.json
-      - echo "🔧 Checking if schema.sql exists..."
+      - echo "📥 Checking for schema.sql..."
       - ls -l ./sql/schema.sql || { echo "❌ schema.sql not found"; exit 1; }
-      - echo "📥 Pushing schema.sql file (no validation)..."
-      # Add any command here if needed to push schema.sql somewhere or just keep it as is
 
 artifacts:
   files:
