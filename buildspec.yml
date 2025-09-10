@@ -5,7 +5,7 @@ env:
     ECR_REPO_URI: "306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata"
     FRONTEND_BUCKET: "yourfrontendbucketfilesharingmetadataservice"
     LAMBDA_FUNCTION_NAME: "uploadmetadat"
-    ECS_CONTAINER_NAME: "fileshare"
+    ECS_CONTAINER_NAME: "metadata-container"
     DB_HOST: "metadatadb.claw0qi2ez2e.ap-south-1.rds.amazonaws.com"
     DB_NAME: "metadatadb"
     DB_PORT: "3306"
