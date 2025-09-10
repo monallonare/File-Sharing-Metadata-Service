@@ -30,15 +30,12 @@ phases:
       - echo "🔑 Logging into Amazon ECR..."
       - export IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION}"
       - aws ecr get-login-password | docker login --username AWS --password-stdin "${ECR_REPO_URI%%/*}"
-      - echo "🔧 Ensuring docker buildx is set up..."
-      - mkdir -p /usr/local/lib/docker/cli-plugins
-      - ln -sf /usr/local/bin/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx || true
-      - docker buildx version
 
   build:
     commands:
       - echo "🐳 Building Docker image for ECS..."
-      - docker buildx build --platform linux/amd64 -t "$ECR_REPO_URI:$IMAGE_TAG" --push ./backend
+      - docker build -t "$ECR_REPO_URI:$IMAGE_TAG" ./backend
+      - docker push "$ECR_REPO_URI:$IMAGE_TAG"
       - echo "🌐 Syncing frontend files to S3..."
       - aws s3 sync ./frontend "s3://$FRONTEND_BUCKET" --delete
 
