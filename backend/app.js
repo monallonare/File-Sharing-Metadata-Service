@@ -7,9 +7,17 @@ const app = express();
 
 app.use(cors({
   origin: 'https://d1d4skzmg8ctcd.cloudfront.net',
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'OPTIONS'],      // Added OPTIONS here
   allowedHeaders: ['Content-Type', 'x-api-key']
 }));
+
+// Explicit OPTIONS handler for /notify route to handle preflight requests
+app.options('/notify', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://d1d4skzmg8ctcd.cloudfront.net');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+  res.sendStatus(200);
+});
 
 app.use(express.json());
 
