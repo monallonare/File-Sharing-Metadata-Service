@@ -16,7 +16,7 @@ export async function getPool() {
     port: s.port,
     user: s.username,
     password: s.password,
-    database: s.dbname,
+    database: s.dbInstanceIdentifier,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
