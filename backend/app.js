@@ -22,6 +22,7 @@ app.options('/notify', (req, res) => {
 app.use(express.json());
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/files', async (_req, res) => {
   try {
@@ -91,3 +92,4 @@ app.post('/get-upload-url', async (req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log('✅ App listening on port', port));
+/app # 
