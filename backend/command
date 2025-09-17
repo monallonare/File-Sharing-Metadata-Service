@@ -1,0 +1,100 @@
+/app # history
+   0 mysql -h metadata-1.claw0qi2ez2e.ap-south-1.rds.amazonaws.com -P 3306 -u admin -p
+   1 apk add mysql-client
+   2 mysql -h metadata-1.claw0qi2ez2e.ap-south-1.rds.amazonaws.com -P 3306 -u admin -p
+   3 mysql --ssl-mode=DISABLED -h metadata-1.claw0qi2ez2e.ap-south-1.rds.amazonaws.com -P 3306 -u admin -p
+   4 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+   5 apk add curl
+   6 curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+   7 mysql --ssl-ca=global-bundle.pem -h metadata-1.claw0qi2ez2e.ap-south-1.rds.amazonaws.com -P 3306 -u admin -p
+   8 ls
+   9 cat app.js 
+  10 cat db.js 
+  11 cat .env
+  12 history
+/app # 
+
+----------------------------
+
+killercode
+
+
+git clone https://github.com/monallonare/File-Sharing-Metadata-Service.git
+apt install npm
+install npm
+install node-fetch
+npm install @aws-sdk/client-secrets-manager mysql2
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+aws --version
+aws configure
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 306266123975.dkr.ecr.ap-south-1.amazonaws.com
+
+
+
+
+
+
+
+
+ntu:~/File-Sharing-Metadata-Service/backend$ history
+    1  exit
+    2  halt
+    3  git clone https://github.com/monallonare/File-Sharing-Metadata-Service.git
+    4  cd File-Sharing-Metadata-Service/backend/
+    5  ls
+    6  apt install npm
+    7  install npm
+    8  npm install
+    9  install node-fetch
+   10  apt install node-fetch
+   11  npm install @aws-sdk/client-secrets-manager mysql2
+   12  npm install @aws-sdk/client-secrets-manager
+   13  npm install mysql2
+   14  npm init -y
+   15  nano .en
+   16  ls
+   17  nano .env
+   18  npm install dotenv
+   19  ls
+   20  docker-compose up --build -d
+   21  docker images
+   22  docker tag backend_backend:latest 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest786
+   23  docker push 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest786
+   24  docker ps
+   25  docker ps -a
+   26  docker rm a9621b12bfff
+   27  docker images
+   28  docker 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata
+   29  docker rmi 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata
+   30  docker rmi 6a6393ddd684
+   31  docker rmi 6a6393ddd684 -f
+   32  docker images
+   33  npm install node-fetch
+   34  docker-compose up --build -d
+   35  docker tag backend_backend:latest 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest787
+   36  docker push 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest787
+   37  nano .env 
+   38  docker images
+   39  docker rmi 635516ae86c1 -f
+   40  docker ps
+   41  docker rm 4245c395be40
+   42  docker rm 4245c395be40 -f
+   43  docker rm 4245c395be40
+   44  docker rmi 635516ae86c1 -f
+   45  docker-compose up --build -d
+   46  docker tag backend_backend:latest 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest788
+   47  docker push 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest788
+   48  nano .env 
+   49  nano db.js 
+   50  docker images
+   51  docker ps
+   52  docker rm 26832900a488 -f
+   53  docker rmi backend_backend
+   54  docker images
+   55  docker rmi 328a727a8198
+   56  docker-compose up --build -d
+   57  docker tag backend_backend:latest 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest789
+   58  docker push 306266123975.dkr.ecr.ap-south-1.amazonaws.com/newmetadata:latest789
+   59  history
