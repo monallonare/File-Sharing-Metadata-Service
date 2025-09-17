@@ -5,13 +5,14 @@ import { getPool } from './db.js';
 
 const app = express();
 
+// CORS setup
 app.use(cors({
   origin: 'https://d1d4skzmg8ctcd.cloudfront.net',
-  methods: ['GET', 'POST', 'OPTIONS'],      // Added OPTIONS here
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-api-key']
 }));
 
-// Explicit OPTIONS handler for /notify route to handle preflight requests
+// Handle preflight requests for /notify
 app.options('/notify', (req, res) => {
   res.header('Access-Control-Allow-Origin', 'https://d1d4skzmg8ctcd.cloudfront.net');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -21,22 +22,25 @@ app.options('/notify', (req, res) => {
 
 app.use(express.json());
 
+// Health check routes
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+// GET /files - list uploaded files
 app.get('/files', async (_req, res) => {
   try {
     const pool = await getPool();
-    const q = await pool.query(
+    const [rows] = await pool.query(
       'SELECT id, filename, s3_key, size, created_at FROM files ORDER BY created_at DESC'
     );
-    res.json(q.rows);
+    res.json(rows);
   } catch (e) {
     console.error('DB error on /files:', e);
     res.status(500).json({ error: 'db_error' });
   }
 });
 
+// POST /notify - record file upload metadata
 app.post('/notify', async (req, res) => {
   const { key, filename, size } = req.body || {};
   if (!key || !filename) {
@@ -45,17 +49,30 @@ app.post('/notify', async (req, res) => {
 
   try {
     const pool = await getPool();
-    const ins = await pool.query(
-      'INSERT INTO files(filename, s3_key, size) VALUES($1, $2, $3) RETURNING id, created_at',
+    
+    // Insert file metadata
+    const [result] = await pool.query(
+      'INSERT INTO files(filename, s3_key, size) VALUES(?, ?, ?)',
       [filename, key, size || 0]
     );
-    res.json({ ok: true, id: ins.rows[0].id, created_at: ins.rows[0].created_at });
+
+    const insertedId = result.insertId;
+
+    // Fetch the inserted row to get created_at
+    const [rows] = await pool.query(
+      'SELECT id, created_at FROM files WHERE id = ?',
+      [insertedId]
+    );
+
+    const inserted = rows[0];
+    res.json({ ok: true, id: inserted.id, created_at: inserted.created_at });
   } catch (e) {
     console.error('DB error on /notify:', e);
     res.status(500).json({ error: 'db_error' });
   }
 });
 
+// POST /get-upload-url - get a signed S3 upload URL
 app.post('/get-upload-url', async (req, res) => {
   try {
     const { filename, contentType } = req.body;
@@ -92,4 +109,3 @@ app.post('/get-upload-url', async (req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log('✅ App listening on port', port));
-/app # 
