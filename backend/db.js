@@ -1,22 +1,14 @@
-import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import mysql from 'mysql2/promise';
-
-const sm = new SecretsManagerClient({});
-let pool;
+import dotenv from 'dotenv';
+dotenv.config();
 
 export async function getPool() {
-  if (pool) return pool;
-
-  const secretId = process.env.DB_SECRET_ID;
-  const res = await sm.send(new GetSecretValueCommand({ SecretId: secretId }));
-  const s = JSON.parse(res.SecretString);
-
-  pool = mysql.createPool({
-    host: s.host,
-    port: s.port,
-    user: s.username,
-    password: s.password,
-    database: s.dbInstanceIdentifier,
+  const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
